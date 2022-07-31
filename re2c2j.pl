@@ -85,10 +85,14 @@ use constant DEFINE_YYCH                  => 'DEFINE_YYCH';
 use constant DEFINE_YYLABEL               => 'DEFINE_YYLABEL';
 use constant ASSIGN_YYCH_YYCURSOR         => 'ASSIGN_YYCH_YYCURSOR';
 use constant CMP_YYCH_LESS_EQ_CONSTANT    => 'CMP_YYCH_LESS_EQ_CONSTANT';
+use constant CMP_YYCH_GREATER_EQ_CONSTANT => 'CMP_YYCH_GREATER_EQ_CONSTANT';
 use constant CMP_YYCH_EQ_CONSTANT_GOTO    => 'CMP_YYCH_EQ_CONSTANT_GOTO';
 use constant CMP_YYCH_NE_CONSTANT_GOTO    => 'CMP_YYCH_NE_CONSTANT_GOTO';
+use constant CMP_YYCH_GREATER_EQ_CONSTANT_GOTO =>
+  'CMP_YYCH_GREATER_EQ_CONSTANT_GOTO';
 use constant CMP_YYLIMIT_LESS_EQ_YYCURSOR => 'CMP_YYLIMIT_LESS_EQ_YYCURSOR';
 use constant CMP_YYFILL_0_GOTO            => 'CMP_YYFILL_0_GOTO';
+use constant ELSE_WITH_BRACES             => 'ELSE_WITH_BRACES';
 use constant GOTO_YYLABEL                 => 'GOTO_YYLABEL';
 use constant INC_YYCURSOR                 => 'INC_YYCURSOR';
 use constant ASSIGN_YYMARKER_INC_YYCURSOR => 'ASSIGN_YYMARKER_INC_YYCURSOR';
@@ -96,6 +100,8 @@ use constant ASSIGN_YYMARKER_YYCURSOR     => 'ASSIGN_YYMARKER_YYCURSOR';
 use constant ASSIGN_YYCURSOR_YYMARKER     => 'ASSIGN_YYCURSOR_YYMARKER';
 
 my $C_SPACE = qr/( |\t|\v|\f)+/;
+my $C_CHAR_LIT =
+  qr/ ' (?: \\\\ | \\' | [\x20-\x26] | [\x28-\x5b] | [\x5d-\x7e] ) ' /x;
 
 my $is_in_user_code = 0;
 
@@ -183,14 +189,18 @@ sub get_line_type($) {
         return ASSIGN_YYCURSOR_YYMARKER;
     }
 
-    if (m[\A$C_SPACE*\Qif (yych <= 0x\E[0-f]{2}\Q) {\E\z]) {
+    if (m[\A$C_SPACE*\Qif (yych <= \E(?:0x[0-f]{2}|$C_CHAR_LIT)\Q) {\E\z]) {
         return CMP_YYCH_LESS_EQ_CONSTANT;
+    }
+
+    if (m[\A$C_SPACE*\Qif (yych >= \E(?:0x[0-f]{2}|$C_CHAR_LIT)\Q) {\E\z]) {
+        return CMP_YYCH_GREATER_EQ_CONSTANT;
     }
 
     if (
         m[\A$C_SPACE*
 	\Qif (yych == \E
-	(?:0x[a-f]{2}|'[a-z]')
+	(?:0x[a-f]{2}|$C_CHAR_LIT)
 	\Q) goto \E
 	(?:yyeof|yy[0-9]+_?);\z]x
       )
@@ -201,7 +211,7 @@ sub get_line_type($) {
     if (
         m[\A$C_SPACE*
 	\Qif (yych != \E
-	(?:0x[a-f]{2}|'[a-z]')
+	(?:0x[a-f]{2}|$C_CHAR_LIT)
 	\Q) goto \E
 	(?:yyeof|yy[0-9]+_?);\z]x
       )
@@ -209,8 +219,23 @@ sub get_line_type($) {
         return CMP_YYCH_NE_CONSTANT_GOTO;
     }
 
+    if (
+        m[\A$C_SPACE*
+	\Qif (yych >= \E
+	(?:0x[a-f]{2}|$C_CHAR_LIT)
+	\Q) goto \E
+	(?:yyeof|yy[0-9]+_?);\z]x
+      )
+    {
+        return CMP_YYCH_GREATER_EQ_CONSTANT_GOTO;
+    }
+
     if (m[\A$C_SPACE*\Qif (YYLIMIT <= YYCURSOR) {\E\z]) {
         return CMP_YYLIMIT_LESS_EQ_YYCURSOR;
+    }
+
+    if (m[\A$C_SPACE*\Q} else {\E$C_SPACE*\z]) {
+        return ELSE_WITH_BRACES;
     }
 
     if (
