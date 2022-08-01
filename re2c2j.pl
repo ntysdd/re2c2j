@@ -73,40 +73,32 @@ if ( $? != 0 ) {
     die "re2c error. error code = $?\n";
 }
 
-#debug
-print "$_\n" for @re2c_output;
-
 use constant EMPTY_LINE                   => 'EMPTY_LINE';
 use constant COMMENT                      => 'COMMENT';
 use constant LINE_COMMENT                 => 'LINE_COMMENT';
 use constant LEFT_BRACE                   => 'LEFT_BRACE';
 use constant RIGHT_BRACE                  => 'RIGHT_BRACE';
 use constant DEFINE_YYCH                  => 'DEFINE_YYCH';
-use constant DEFINE_YYLABEL               => 'DEFINE_YYLABEL';
 use constant ASSIGN_YYCH_YYCURSOR         => 'ASSIGN_YYCH_YYCURSOR';
-use constant CMP_YYCH_LESS_EQ_CONSTANT    => 'CMP_YYCH_LESS_EQ_CONSTANT';
-use constant CMP_YYCH_GREATER_EQ_CONSTANT => 'CMP_YYCH_GREATER_EQ_CONSTANT';
-use constant CMP_YYCH_EQ_CONSTANT_GOTO    => 'CMP_YYCH_EQ_CONSTANT_GOTO';
-use constant CMP_YYCH_NE_CONSTANT_GOTO    => 'CMP_YYCH_NE_CONSTANT_GOTO';
-use constant CMP_YYCH_GREATER_EQ_CONSTANT_GOTO =>
-  'CMP_YYCH_GREATER_EQ_CONSTANT_GOTO';
 use constant CMP_YYLIMIT_LESS_EQ_YYCURSOR => 'CMP_YYLIMIT_LESS_EQ_YYCURSOR';
-use constant CMP_YYFILL_0_GOTO            => 'CMP_YYFILL_0_GOTO';
 use constant ELSE_WITH_BRACES             => 'ELSE_WITH_BRACES';
-use constant GOTO_YYLABEL                 => 'GOTO_YYLABEL';
 use constant INC_YYCURSOR                 => 'INC_YYCURSOR';
 use constant ASSIGN_YYMARKER_INC_YYCURSOR => 'ASSIGN_YYMARKER_INC_YYCURSOR';
 use constant ASSIGN_YYMARKER_YYCURSOR     => 'ASSIGN_YYMARKER_YYCURSOR';
 use constant ASSIGN_YYCURSOR_YYMARKER     => 'ASSIGN_YYCURSOR_YYMARKER';
 
-my $C_SPACE = qr/( |\t|\v|\f)+/;
+use constant EQ => 'EQ';
+use constant NE => 'NE';
+use constant GE => 'GE';
+use constant LE => 'LE';
+
+my $C_SPACE = qr/(?: |\t|\v|\f)+/;
 my $C_CHAR_LIT =
   qr/ ' (?: \\\\ | \\' | [\x20-\x26] | [\x28-\x5b] | [\x5d-\x7e] ) ' /x;
 
 my $is_in_user_code = 0;
 
 package UserCode;
-
 use overload '""' => '_stringify';
 
 sub new {
@@ -125,6 +117,137 @@ sub _stringify {
     my ($self) = @_;
     my $usercode = $self->usercode;
     "UserCode($usercode)";
+}
+
+package YyLabel;
+use overload '""' => '_stringify';
+
+sub new {
+    my ( $name, $label ) = @_;
+    my $self = { _label => $label };
+    bless $self, $name;
+    $self;
+}
+
+sub label {
+    my ($self) = @_;
+    $self->{_label};
+}
+
+sub _stringify {
+    my ($self) = @_;
+    my $label = $self->label;
+    "YyLabel($label)";
+}
+
+package GotoLabel;
+use overload '""' => '_stringify';
+
+sub new {
+    my ( $name, $label ) = @_;
+    my $self = { _label => $label };
+    bless $self, $name;
+    $self;
+}
+
+sub label {
+    my ($self) = @_;
+    $self->{_label};
+}
+
+sub _stringify {
+    my ($self) = @_;
+    my $label = $self->label;
+    "GotoLabel($label)";
+}
+
+package CmpYychIf;
+use overload '""' => '_stringify';
+
+sub new {
+    my ( $name, $op, $rhs ) = @_;
+    die unless $op =~ /\A (?: EQ | NE | GE | LE ) \z/x;
+    die unless $rhs =~ /\A (?: $C_CHAR_LIT | 0x[0-9a-f]{2} ) \z/x;
+    my $self = { _op => $op, _rhs => $rhs };
+    bless $self, $name;
+    $self;
+}
+
+sub op {
+    my ($self) = @_;
+    $self->{_op};
+}
+
+sub rhs {
+    my ($self) = @_;
+    $self->{_rhs};
+}
+
+sub _stringify {
+    my ($self) = @_;
+    my $op     = $self->op;
+    my $rhs    = $self->rhs;
+    "YyLabel(op => $op, rhs => $rhs)";
+}
+
+package CmpYychIfGoto;
+use overload '""' => '_stringify';
+
+sub new {
+    my ( $name, $op, $rhs, $label ) = @_;
+    die unless $op =~ /\A (?: EQ | NE | GE | LE ) \z/x;
+    die unless $rhs =~ /\A (?: $C_CHAR_LIT | 0x[0-9a-f]{2} ) \z/x;
+    die unless $label =~ /\A yy (?: eof| [0-9]+_? ) \z/x;
+
+    my $self = { _op => $op, _rhs => $rhs, _label => $label };
+    bless $self, $name;
+    $self;
+}
+
+sub op {
+    my ($self) = @_;
+    $self->{_op};
+}
+
+sub rhs {
+    my ($self) = @_;
+    $self->{_rhs};
+}
+
+sub label {
+    my ($self) = @_;
+    $self->{_label};
+}
+
+sub _stringify {
+    my ($self) = @_;
+    my $op     = $self->op;
+    my $rhs    = $self->rhs;
+    my $label  = $self->label;
+    "YyLabel(op => $op, rhs => $rhs, label => $label)";
+}
+
+package CmpYyfill0Goto;
+use overload '""' => '_stringify';
+
+sub new {
+    my ( $name, $label ) = @_;
+    die unless $label =~ /\A yy (?: eof| [0-9]+_? ) \z/x;
+
+    my $self = { _label => $label };
+    bless $self, $name;
+    $self;
+}
+
+sub label {
+    my ($self) = @_;
+    $self->{_label};
+}
+
+sub _stringify {
+    my ($self) = @_;
+    my $label = $self->label;
+    "CmpYyfill0Goto(label => $label)";
 }
 
 package main;
@@ -180,7 +303,7 @@ sub get_line_type($) {
             my $nth = $label_count;
             $label_map{$label} = $nth;
         }
-        return DEFINE_YYLABEL;
+        return YyLabel->new($label);
     }
 
     if (m{\A$C_SPACE*\Qyych = *YYCURSOR;\E$C_SPACE*\z}) {
@@ -199,45 +322,45 @@ sub get_line_type($) {
         return ASSIGN_YYCURSOR_YYMARKER;
     }
 
-    if (m[\A$C_SPACE*\Qif (yych <= \E(?:0x[0-f]{2}|$C_CHAR_LIT)\Q) {\E\z]) {
-        return CMP_YYCH_LESS_EQ_CONSTANT;
+    if (m[\A$C_SPACE*\Qif (yych <= \E(0x[0-9a-f]{2}|$C_CHAR_LIT)\Q) {\E\z]) {
+        return CmpYychIf->new( LE, $1 );
     }
 
-    if (m[\A$C_SPACE*\Qif (yych >= \E(?:0x[0-f]{2}|$C_CHAR_LIT)\Q) {\E\z]) {
-        return CMP_YYCH_GREATER_EQ_CONSTANT;
+    if (m[\A$C_SPACE*\Qif (yych >= \E(0x[0-9a-f]{2}|$C_CHAR_LIT)\Q) {\E\z]) {
+        return CmpYychIf->new( GE, $1 );
     }
 
     if (
         m[\A$C_SPACE*
 	\Qif (yych == \E
-	(?:0x[a-f]{2}|$C_CHAR_LIT)
+	(0x[0-9a-f]{2}|$C_CHAR_LIT)
 	\Q) goto \E
-	(?:yyeof|yy[0-9]+_?);\z]x
+	(yyeof|yy[0-9]+_?);\z]x
       )
     {
-        return CMP_YYCH_EQ_CONSTANT_GOTO;
+        return CmpYychIfGoto->new( EQ, $1, $2 );
     }
 
     if (
         m[\A$C_SPACE*
 	\Qif (yych != \E
-	(?:0x[a-f]{2}|$C_CHAR_LIT)
+	(0x[0-9a-f]{2}|$C_CHAR_LIT)
 	\Q) goto \E
-	(?:yyeof|yy[0-9]+_?);\z]x
+	(yyeof|yy[0-9]+_?);\z]x
       )
     {
-        return CMP_YYCH_NE_CONSTANT_GOTO;
+        return CmpYychIfGoto->new( NE, $1, $2 );
     }
 
     if (
         m[\A$C_SPACE*
 	\Qif (yych >= \E
-	(?:0x[a-f]{2}|$C_CHAR_LIT)
+	(0x[0-9a-f]{2}|$C_CHAR_LIT)
 	\Q) goto \E
-	(?:yyeof|yy[0-9]+_?);\z]x
+	(yyeof|yy[0-9]+_?);\z]x
       )
     {
-        return CMP_YYCH_GREATER_EQ_CONSTANT_GOTO;
+        return CmpYychIfGoto->new( GE, $1, $2 );
     }
 
     if (m[\A$C_SPACE*\Qif (YYLIMIT <= YYCURSOR) {\E\z]) {
@@ -252,14 +375,14 @@ sub get_line_type($) {
         m[\A$C_SPACE*
 	\Qif (YYFILL\E $C_SPACE*
 	\Q() == 0) goto \E
-	(?:yyeof|yy[0-9]+_?);\z]x
+	(yyeof|yy[0-9]+_?);\z]x
       )
     {
-        return CMP_YYFILL_0_GOTO;
+        return CmpYyfill0Goto->new($1);
     }
 
-    if (m{\A$C_SPACE*goto (?:yyeof|yy[0-9]+_?);\z}) {
-        return GOTO_YYLABEL;
+    if (m{\A$C_SPACE*goto (yyeof|yy[0-9]+_?);\z}) {
+        return GotoLabel->new($1);
     }
 
     if (m{\A$C_SPACE*\Q++YYCURSOR;\E\z}) {
@@ -269,16 +392,124 @@ sub get_line_type($) {
     die 'failed to parse re2c output';
 }
 
+my @processed_line;
+
 sub pre_processing_re2c_output {
     local $_;
     for my $line (@_) {
         my $type = get_line_type($line);
 
-        #debug
-        print "\$type=$type\n";
+        push @processed_line, $type;
     }
 }
 
 pre_processing_re2c_output(@re2c_output);
 
+sub match_str($$) {
+    my ( $obj, $str ) = @_;
+    return ( ref $obj eq '' ) && ( $obj eq $str );
+}
 
+sub translate_op($) {
+    my ($op) = @_;
+    if ( $op eq EQ ) {
+        return '==';
+    }
+    if ( $op eq NE ) {
+        return '!=';
+    }
+    if ( $op eq GE ) {
+        return '>=';
+    }
+    if ( $op eq LE ) {
+        return '<=';
+    }
+}
+
+for (@processed_line) {
+    if ( ref $_ eq 'UserCode' ) {
+        say $_->usercode();
+        next;
+    }
+    if ( match_str( $_, LEFT_BRACE ) ) {
+        say '{';
+        next;
+    }
+    if ( match_str( $_, RIGHT_BRACE ) ) {
+        say '}';
+        next;
+    }
+    if ( match_str( $_, ELSE_WITH_BRACES ) ) {
+        say '} else {';
+        next;
+    }
+    if ( match_str( $_, DEFINE_YYCH ) ) {
+        say 'char yych;
+	int SWITCH_STATE = 1;
+	while (true){
+	switch (SWITCH_STATE){';
+        next;
+    }
+    if ( ref $_ eq 'YyLabel' ) {
+        my $label_number = $label_map{ $_->label };
+        say "case $label_number:";
+        next;
+    }
+    if ( match_str( $_, ASSIGN_YYCH_YYCURSOR ) ) {
+        say 'yych = INPUT_BUF[YYCURSOR];';
+        next;
+    }
+    if ( match_str( $_, ASSIGN_YYCURSOR_YYMARKER ) ) {
+        say 'YYCURSOR = YYMARKER;';
+        next;
+    }
+    if ( match_str( $_, ASSIGN_YYMARKER_YYCURSOR ) ) {
+        say 'YYMARKER = YYCURSOR;';
+        next;
+    }
+    if ( match_str( $_, ASSIGN_YYMARKER_INC_YYCURSOR ) ) {
+        say 'YYMARKER = ++YYCURSOR;';
+        next;
+    }
+    if ( match_str( $_, INC_YYCURSOR ) ) {
+        say '++YYCURSOR;';
+        next;
+    }
+    if ( ref $_ eq 'CmpYychIf' ) {
+        my $op  = translate_op( $_->op );
+        my $rhs = $_->rhs;
+        say "if (yych $op $rhs) {";
+        next;
+    }
+    if ( ref $_ eq 'CmpYychIfGoto' ) {
+        my $op    = translate_op( $_->op );
+        my $rhs   = $_->rhs;
+        my $label = $_->label;
+        say "if (yych $op $rhs) {
+        SWITCH_STATE = @{[$label_map{$label}]};
+        continue;
+        }";
+        next;
+    }
+    if ( ref $_ eq 'GotoLabel' ) {
+        my $label = $_->label;
+        say "if (false) {} else {
+        SWITCH_STATE = @{[$label_map{$label}]};
+        continue;
+        }";
+        next;
+    }
+    if ( match_str( $_, CMP_YYLIMIT_LESS_EQ_YYCURSOR ) ) {
+        say "if (YYLIMIT <= YYCURSOR) {";
+        next;
+    }
+    if ( ref $_ eq 'CmpYyfill0Goto' ) {
+        my $label = $_->label;
+        say "if (YYFILL () == 0) {
+        SWITCH_STATE = @{[$label_map{$label}]};
+        continue;
+	}";
+        next;
+    }
+}
+say '}}';
