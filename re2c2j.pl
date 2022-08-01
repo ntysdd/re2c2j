@@ -129,6 +129,9 @@ sub _stringify {
 
 package main;
 
+my %label_map;
+my $label_count = 0;
+
 sub get_line_type($) {
     local $_ = $_[0];
     if (m{\A#line [0-9]+ (.*)$}) {
@@ -170,6 +173,13 @@ sub get_line_type($) {
     }
 
     if (m{\Ayy(?:eof|[0-9]+_?):\z}) {
+        my $label = $_;
+        $label =~ s/:$//;
+        if ( not exists $label_map{$label} ) {
+            $label_count++;
+            my $nth = $label_count;
+            $label_map{$label} = $nth;
+        }
         return DEFINE_YYLABEL;
     }
 
@@ -270,3 +280,5 @@ sub pre_processing_re2c_output {
 }
 
 pre_processing_re2c_output(@re2c_output);
+
+
