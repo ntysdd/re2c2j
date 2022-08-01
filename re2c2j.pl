@@ -493,7 +493,7 @@ for (@processed_line) {
     }
     if ( ref $_ eq 'GotoLabel' ) {
         my $label = $_->label;
-        say "if (false) {} else {
+        say "{
         SWITCH_STATE = @{[$label_map{$label}]};
         continue;
         }";
