@@ -91,7 +91,9 @@ use constant ASSIGN_YYCURSOR_YYMARKER     => 'ASSIGN_YYCURSOR_YYMARKER';
 use constant EQ => 'EQ';
 use constant NE => 'NE';
 use constant GE => 'GE';
+use constant GT => 'GT';
 use constant LE => 'LE';
+use constant LT => 'LT';
 
 my $C_SPACE = qr/(?: |\t|\v|\f)+/;
 my $C_CHAR_LIT =
@@ -196,7 +198,7 @@ use overload '""' => '_stringify';
 
 sub new {
     my ( $name, $op, $rhs, $label ) = @_;
-    die unless $op =~ /\A (?: EQ | NE | GE | LE ) \z/x;
+    die unless $op =~ /\A (?: EQ | NE | GE | LE | GT | LT ) \z/x;
     die unless $rhs =~ /\A (?: $C_CHAR_LIT | 0x[0-9a-f]{2,4} ) \z/x;
     die unless $label =~ /\A yy (?: eof| [0-9]+_? ) \z/x;
 
@@ -249,6 +251,42 @@ sub _stringify {
     my ($self) = @_;
     my $label = $self->label;
     "CmpYyfill0Goto(label => $label)";
+}
+
+package CmpYylimitYycursorYyfillN;
+use overload '""' => '_stringify';
+
+sub new {
+    my ( $name, $op, $op_rhs, $n ) = @_;
+    die unless $op =~ /\A(?:GE | GT | LE | LT)\z/x;
+    die unless $op_rhs =~ /\A [0-9]+ \z/x;
+    die unless $n =~ /\A [0-9]+ \z/x;
+    my $self = { _op => $op, _op_rhs => $op_rhs, _n => $n };
+    bless $self, $name;
+    $self;
+}
+
+sub op {
+    my ($self) = @_;
+    $self->{_op};
+}
+
+sub op_rhs {
+    my ($self) = @_;
+    $self->{_op_rhs};
+}
+
+sub n {
+    my ($self) = @_;
+    $self->{_n};
+}
+
+sub _stringify {
+    my ($self) = @_;
+    my $op     = $self->op;
+    my $op_rhs = $self->op_rhs;
+    my $n      = $self->n;
+    "CmpYylimitYycursorYyfillN(op => $op, op_rhs => $op_rhs, n => $n)";
 }
 
 package main;
@@ -336,39 +374,58 @@ sub get_line_type($) {
 
     if (
         m[\A$C_SPACE*
-	\Qif (yych == \E
+	\Qif (yych \E(..?)\Q \E
 	(0x[0-9a-f]{2,4}|$C_CHAR_LIT)
 	\Q) goto \E
 	(yyeof|yy[0-9]+_?);\z]x
       )
     {
-        return CmpYychIfGoto->new( EQ, $1, $2 );
-    }
-
-    if (
-        m[\A$C_SPACE*
-	\Qif (yych != \E
-	(0x[0-9a-f]{2,4}|$C_CHAR_LIT)
-	\Q) goto \E
-	(yyeof|yy[0-9]+_?);\z]x
-      )
-    {
-        return CmpYychIfGoto->new( NE, $1, $2 );
-    }
-
-    if (
-        m[\A$C_SPACE*
-	\Qif (yych >= \E
-	(0x[0-9a-f]{2,4}|$C_CHAR_LIT)
-	\Q) goto \E
-	(yyeof|yy[0-9]+_?);\z]x
-      )
-    {
-        return CmpYychIfGoto->new( GE, $1, $2 );
+        my $op = $1;
+        if ( $op eq '<' ) {
+            $op = LT;
+        }
+        elsif ( $op eq '>' ) {
+            $op = GT;
+        }
+        elsif ( $op eq '<=' ) {
+            $op = LE;
+        }
+        elsif ( $op eq '>=' ) {
+            $op = GE;
+        }
+        elsif ( $op eq '==' ) {
+            $op = EQ;
+        }
+        elsif ( $op eq '!=' ) {
+            $op = NE;
+        }
+        return CmpYychIfGoto->new( $op, $2, $3 );
     }
 
     if (m[\A$C_SPACE*\Qif (YYLIMIT <= YYCURSOR) {\E\z]) {
         return CMP_YYLIMIT_LESS_EQ_YYCURSOR;
+    }
+
+    if (
+        m[\A $C_SPACE* \Qif ((YYLIMIT - YYCURSOR) \E
+	(..?)
+	\Q \E([0-9]+)\Q) YYFILL\E[\x20]?\Q(\E
+	([0-9]+) \Q);\E \z]x
+      )
+    {
+        my $op     = $1;
+        my $op_rhs = $2;
+        my $n      = $3;
+        if ( $op eq '<' ) {
+            $op = LT;
+        }
+        elsif ( $op eq '<=' ) {
+            $op = LE;
+        }
+        else {
+            goto error;
+        }
+        return CmpYylimitYycursorYyfillN->new( $op, $op_rhs, $n );
     }
 
     if (m[\A$C_SPACE*\Q} else {\E$C_SPACE*\z]) {
@@ -428,6 +485,13 @@ sub translate_op($) {
     if ( $op eq LE ) {
         return '<=';
     }
+    if ( $op eq LT ) {
+        return '<';
+    }
+    if ( $op eq GT ) {
+        return '>';
+    }
+    die "unknown op $op";
 }
 
 for (@processed_line) {
@@ -520,5 +584,20 @@ for (@processed_line) {
 	}";
         next;
     }
+    if ( ref $_ eq 'CmpYylimitYycursorYyfillN' ) {
+        my $op = $_->op;
+        my $op_rhs = $_->op_rhs;
+        my $n = $_->n;
+        $op = translate_op($op);
+        say "if ((YYLIMIT - YYCURSOR) $op $op_rhs) { YYFILL ($n);  }";
+        next;
+    }
+    if ( match_str( $_, COMMENT ) ) {
+        next;
+    }
+    if ( match_str( $_, LINE_COMMENT ) ) {
+        next;
+    }
+    die "unknown output $_";
 }
 say '}}';
