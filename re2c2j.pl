@@ -80,6 +80,7 @@ use constant LEFT_BRACE                   => 'LEFT_BRACE';
 use constant RIGHT_BRACE                  => 'RIGHT_BRACE';
 use constant DEFINE_YYCH                  => 'DEFINE_YYCH';
 use constant ASSIGN_YYCH_YYCURSOR         => 'ASSIGN_YYCH_YYCURSOR';
+use constant ASSIGN_YYCH_INC_YYCURSOR     => 'ASSIGN_YYCH_INC_YYCURSOR';
 use constant CMP_YYLIMIT_LESS_EQ_YYCURSOR => 'CMP_YYLIMIT_LESS_EQ_YYCURSOR';
 use constant ELSE_WITH_BRACES             => 'ELSE_WITH_BRACES';
 use constant INC_YYCURSOR                 => 'INC_YYCURSOR';
@@ -309,6 +310,9 @@ sub get_line_type($) {
     if (m{\A$C_SPACE*\Qyych = *YYCURSOR;\E$C_SPACE*\z}) {
         return ASSIGN_YYCH_YYCURSOR;
     }
+    if (m{\A$C_SPACE*\Qyych = *++YYCURSOR;\E$C_SPACE*\z}) {
+        return ASSIGN_YYCH_INC_YYCURSOR;
+    }
 
     if (m{\A$C_SPACE*\QYYMARKER = YYCURSOR;\E$C_SPACE*\z}) {
         return ASSIGN_YYMARKER_YYCURSOR;
@@ -457,6 +461,10 @@ for (@processed_line) {
     }
     if ( match_str( $_, ASSIGN_YYCH_YYCURSOR ) ) {
         say 'yych = INPUT_BUF[YYCURSOR];';
+        next;
+    }
+    if ( match_str( $_, ASSIGN_YYCH_INC_YYCURSOR ) ) {
+        say 'yych = INPUT_BUF[++YYCURSOR];';
         next;
     }
     if ( match_str( $_, ASSIGN_YYCURSOR_YYMARKER ) ) {
