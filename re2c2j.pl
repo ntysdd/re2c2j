@@ -168,7 +168,7 @@ use overload '""' => '_stringify';
 sub new {
     my ( $name, $op, $rhs ) = @_;
     die unless $op =~ /\A (?: EQ | NE | GE | LE ) \z/x;
-    die unless $rhs =~ /\A (?: $C_CHAR_LIT | 0x[0-9a-f]{2} ) \z/x;
+    die unless $rhs =~ /\A (?: $C_CHAR_LIT | 0x[0-9a-f]{2,4} ) \z/x;
     my $self = { _op => $op, _rhs => $rhs };
     bless $self, $name;
     $self;
@@ -197,7 +197,7 @@ use overload '""' => '_stringify';
 sub new {
     my ( $name, $op, $rhs, $label ) = @_;
     die unless $op =~ /\A (?: EQ | NE | GE | LE ) \z/x;
-    die unless $rhs =~ /\A (?: $C_CHAR_LIT | 0x[0-9a-f]{2} ) \z/x;
+    die unless $rhs =~ /\A (?: $C_CHAR_LIT | 0x[0-9a-f]{2,4} ) \z/x;
     die unless $label =~ /\A yy (?: eof| [0-9]+_? ) \z/x;
 
     my $self = { _op => $op, _rhs => $rhs, _label => $label };
@@ -326,18 +326,18 @@ sub get_line_type($) {
         return ASSIGN_YYCURSOR_YYMARKER;
     }
 
-    if (m[\A$C_SPACE*\Qif (yych <= \E(0x[0-9a-f]{2}|$C_CHAR_LIT)\Q) {\E\z]) {
+    if (m[\A$C_SPACE*\Qif (yych <= \E(0x[0-9a-f]{2,4}|$C_CHAR_LIT)\Q) {\E\z]) {
         return CmpYychIf->new( LE, $1 );
     }
 
-    if (m[\A$C_SPACE*\Qif (yych >= \E(0x[0-9a-f]{2}|$C_CHAR_LIT)\Q) {\E\z]) {
+    if (m[\A$C_SPACE*\Qif (yych >= \E(0x[0-9a-f]{2,4}|$C_CHAR_LIT)\Q) {\E\z]) {
         return CmpYychIf->new( GE, $1 );
     }
 
     if (
         m[\A$C_SPACE*
 	\Qif (yych == \E
-	(0x[0-9a-f]{2}|$C_CHAR_LIT)
+	(0x[0-9a-f]{2,4}|$C_CHAR_LIT)
 	\Q) goto \E
 	(yyeof|yy[0-9]+_?);\z]x
       )
@@ -348,7 +348,7 @@ sub get_line_type($) {
     if (
         m[\A$C_SPACE*
 	\Qif (yych != \E
-	(0x[0-9a-f]{2}|$C_CHAR_LIT)
+	(0x[0-9a-f]{2,4}|$C_CHAR_LIT)
 	\Q) goto \E
 	(yyeof|yy[0-9]+_?);\z]x
       )
@@ -359,7 +359,7 @@ sub get_line_type($) {
     if (
         m[\A$C_SPACE*
 	\Qif (yych >= \E
-	(0x[0-9a-f]{2}|$C_CHAR_LIT)
+	(0x[0-9a-f]{2,4}|$C_CHAR_LIT)
 	\Q) goto \E
 	(yyeof|yy[0-9]+_?);\z]x
       )
