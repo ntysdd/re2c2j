@@ -393,7 +393,7 @@ sub get_line_type($) {
         return INC_YYCURSOR;
     }
   error:
-    die 'failed to parse re2c output';
+    die "failed to parse re2c output `$_'";
 }
 
 my @processed_line;
