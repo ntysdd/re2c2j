@@ -48,7 +48,7 @@ sub fork_pipe($) {
 my $to_read = IO::Handle->new();
 my $pid     = fork_pipe($to_read);
 if ( $pid == 0 ) {
-    my @args = ( 're2c', '--nested-ifs', '--', $filename );
+    my @args = ( 're2c', '--nested-ifs', '--utf-16', '--', $filename );
     { exec { $args[0] } @args; }
 
     # somehow exec failed
