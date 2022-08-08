@@ -10,14 +10,16 @@ If you just want to use regular expressions in Java, see https://docs.oracle.com
 
 re2c is a lexer generator. It compiles regular expression specifications into automata and encodes them into target language.
 
-At the time of writing, supported target languages are C, Rust and Go. (https://re2c.org)
+At the time of writing, supported target languages are C/C++, Rust and Go. (https://re2c.org and https://github.com/skvadrik/re2c)
 
 
 ### How is code translated
 
 re2c2j currently translates generated code line by line, adding necessary surrounding code.
 
-`goto` statements are translated to `while` and `switch`, which hopefully will be JIT-compiled into equiv machine code.
+`goto` statements are translated into `while` and `switch`, which hopefully will be JIT-compiled into equiv machine code.
+
+Pointers are translated into array indices.
 
 Only `--nested-ifs` mode is supported.
 
