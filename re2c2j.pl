@@ -449,9 +449,10 @@ for (@processed_line) {
     }
     if ( match_str( $_, DEFINE_YYCH ) ) {
         say 'char yych;
-	int SWITCH_STATE = 1;
+	int SWITCH_STATE = 0;
 	while (true){
-	switch (SWITCH_STATE){';
+	switch (SWITCH_STATE) {
+	case 0:';
         next;
     }
     if ( ref $_ eq 'YyLabel' ) {
