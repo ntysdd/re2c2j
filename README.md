@@ -13,13 +13,19 @@ re2c2j currently translates generated code line by line, adding necessary surrou
 
 ### What's the dependency
 
-Currently re2c2j is implemented in Perl, which is almost included into every Linux distribution.
+Perl and re2c are required.
+Currently re2c2j is implemented in Perl, which is included in almost every Linux distribution.
 re2c is also required, which should be in PATH when re2c2j is started.
 
 At the time of writing, only Perl v5.30 and re2c v1.3 are tested.
+Windows platform is not tested. I don't know whether Perl's fork emulation is good enough for this, though WSL is good.
 
 ### Usage:
 ```
 $ perl re2c2j.pl input.in > output.out
 ```
 
+### Project Status
+Now re2c2j is in its very-early phase.
+Very few re2c options or features are supported.
+Don't be surprised to see `failed to parse re2c output ...`.
