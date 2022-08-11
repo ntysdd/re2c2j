@@ -1,7 +1,9 @@
 /*!re2c
+    re2c:eof = 0;
+    re2c:yyfill:enable = 0;
 
     *                  { return ERROR; }
-    [\x00]             { return EOF; }
+    $                  { return EOF; }
     [ \t]+             { return WHITE_SPACE; }
     "abstract"         { return KW_abstract; }
     "assert"           { return KW_assert; }
