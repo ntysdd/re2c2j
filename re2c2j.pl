@@ -517,7 +517,7 @@ for (@processed_line) {
         next;
     }
     if ( match_str( $_, DEFINE_YYCH ) ) {
-        say 'char yych;
+        say 'char yych = 0;
 	int SWITCH_STATE = 0;
 	while (true){
 	switch (SWITCH_STATE) {
