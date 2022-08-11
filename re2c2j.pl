@@ -100,7 +100,7 @@ use constant LT => 'LT';
 
 my $C_SPACE = qr/(?: |\t|\v|\f)+/;
 my $C_CHAR_LIT =
-  qr/ ' (?: \\\\ | \\' | [\x20-\x26] | [\x28-\x5b] | [\x5d-\x7e] ) ' /x;
+  qr/ ' (?: \\\\ | \\' | \\t | [\x20-\x26] | [\x28-\x5b] | [\x5d-\x7e] ) ' /x;
 
 my $is_in_user_code = 0;
 
