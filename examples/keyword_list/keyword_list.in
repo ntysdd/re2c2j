@@ -1,0 +1,58 @@
+/*!re2c
+
+    *                  { return ERROR; }
+    [\x00]             { return EOF; }
+    [ \t]+             { return WHITE_SPACE; }
+    "abstract"         { return KW_abstract; }
+    "assert"           { return KW_assert; }
+    "boolean"          { return KW_boolean; }
+    "break"            { return KW_break; }
+    "byte"             { return KW_byte; }
+    "case"             { return KW_case; }
+    "catch"            { return KW_catch; }
+    "char"             { return KW_char; }
+    "class"            { return KW_class; }
+    "const"            { return KW_const; }
+    "continue"         { return KW_continue; }
+    "default"          { return KW_default; }
+    "do"               { return KW_do; }
+    "double"           { return KW_double; }
+    "else"             { return KW_else; }
+    "enum"             { return KW_enum; }
+    "extends"          { return KW_extends; }
+    "final"            { return KW_final; }
+    "finally"          { return KW_finally; }
+    "float"            { return KW_float; }
+    "for"              { return KW_for; }
+    "goto"             { return KW_goto; }
+    "if"               { return KW_if; }
+    "implements"       { return KW_implements; }
+    "import"           { return KW_import; }
+    "instanceof"       { return KW_instanceof; }
+    "int"              { return KW_int; }
+    "interface"        { return KW_interface; }
+    "long"             { return KW_long; }
+    "native"           { return KW_native; }
+    "new"              { return KW_new; }
+    "package"          { return KW_package; }
+    "private"          { return KW_private; }
+    "protected"        { return KW_protected; }
+    "public"           { return KW_public; }
+    "return"           { return KW_return; }
+    "short"            { return KW_short; }
+    "static"           { return KW_static; }
+    "strictfp"         { return KW_strictfp; }
+    "super"            { return KW_super; }
+    "switch"           { return KW_switch; }
+    "synchronized"     { return KW_synchronized; }
+    "this"             { return KW_this; }
+    "throw"            { return KW_throw; }
+    "throws"           { return KW_throws; }
+    "transient"        { return KW_transient; }
+    "try"              { return KW_try; }
+    "void"             { return KW_void; }
+    "volatile"         { return KW_volatile; }
+    "while"            { return KW_while; }
+    [a-z]+             { return IDENT; }
+
+*/
